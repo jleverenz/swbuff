@@ -166,6 +166,14 @@ character.  To exclude all the internal buffers (that is *scratch*,
   :group 'swbuff
   :type '(repeat (regexp :format "%v")))
 
+(defcustom swbuff-include-buffer-regexps '()
+  "*List of regular expressions for included buffers.
+This is a whitelist, tested against before
+swbuff-exclude-buffer-regexps.  The default setting is an empty
+list: nothing is whitelisted."
+  :group 'swbuff
+  :type '(repeat (regexp :format "%v")))
+
 (defcustom swbuff-load-hook '(swbuff-default-load-hook)
   "Hook run when package has been loaded.
 See also `swbuff-default-load-hook'."
@@ -177,14 +185,20 @@ See also `swbuff-default-load-hook'."
 (defconst swbuff-status-buffer-name "*swbuff*"
   "Name of the working buffer used to display the buffer list.")
 
+(defun swbuff-include-test-helper-p (name list)
+  "Return non-nil if buffer NAME is in LIST."
+  (let ((rl list))
+    (while (and rl (not (string-match (car rl) name)))
+      (setq rl (cdr rl)))
+    (not (null rl))))
+
 (defun swbuff-include-p (name)
   "Return non-nil if buffer NAME can be included.
 That is if NAME matches none of the `swbuff-exclude-buffer-regexps'."
-  (let ((rl (cons (regexp-quote swbuff-status-buffer-name)
-                  swbuff-exclude-buffer-regexps)))
-    (while (and rl (not (string-match (car rl) name)))
-      (setq rl (cdr rl)))
-    (null rl)))
+  (let ((exclusion-list (cons (regexp-quote swbuff-status-buffer-name)
+                              swbuff-exclude-buffer-regexps)))
+    (or (swbuff-include-test-helper-p name swbuff-include-buffer-regexps)
+        (not (swbuff-include-test-helper-p name exclusion-list)))))
 
 (defun swbuff-buffer-list ()
   "Return the list of switchable buffers.
